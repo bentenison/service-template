@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func TraceTdMiddleware(next http.Handler) web.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func TraceTdMiddleware(next web.HandlerFunc) web.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) any {
 		correlationID := r.Header.Get("X-Correlation-ID")
 		if correlationID == "" {
 			correlationID = uuid.NewString()
@@ -17,7 +17,7 @@ func TraceTdMiddleware(next http.Handler) web.HandlerFunc {
 
 		ctx := context.WithValue(r.Context(), traceKey, correlationID)
 		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
+		// next.ServeHTTP(w, r)
+		return next(w, r)
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/bentenison/microservice/foundation/logger"
 )
 
-type HandlerFunc func(w http.ResponseWriter, r *http.Request)
+type HandlerFunc func(w http.ResponseWriter, r *http.Request) any
 type App struct {
 	logger *logger.CustomLogger
 	build  string
@@ -40,7 +40,7 @@ func wrapMiddleware(mw []MiddlewareFunc, handler HandlerFunc) HandlerFunc {
 	for i := len(mw) - 1; i >= 0; i-- {
 		mwFunc := mw[i]
 		if mwFunc != nil {
-			handler = mwFunc.Wrap(http.HandlerFunc(handler))
+			handler = mwFunc.Wrap(handler)
 		}
 	}
 
@@ -58,7 +58,20 @@ func (a *App) HandleFunc(path string, handlerFunc HandlerFunc, midFuncs ...Middl
 	// h := tm.Wrap(http.HandlerFunc(handlerFunc))
 	// h := wrapMiddleware(a.mw, handlerFunc)
 
-	h := wrapMiddleware(midFuncs, handlerFunc)
+	handlerFunc = wrapMiddleware(midFuncs, handlerFunc)
+	h := func(w http.ResponseWriter, r *http.Request) {
+		// ctx := setTracer(r.Context(), a.tracer)
+		// ctx = setWriter(ctx, w)
+
+		// otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(w.Header()))
+
+		res := handlerFunc(w, r)
+		if err := Respond(r.Context(), w, res); err != nil {
+			a.logger.Error("error responding client", map[string]interface{}{
+				"error": err,
+			})
+		}
+	}
 	// return a.mux.Handle(path, h)
 	return a.mux.HandleFunc(path, h)
 }

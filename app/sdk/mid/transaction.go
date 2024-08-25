@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/bentenison/microservice/business/sdk/sqldb"
+	"github.com/bentenison/microservice/foundation/web"
 )
 
 type TransactionMiddleware struct {
@@ -15,15 +16,15 @@ func NewTransactionMiddleware(tm sqldb.TransactionManager) *TransactionMiddlewar
 	return &TransactionMiddleware{tm: tm}
 }
 
-func (tmw *TransactionMiddleware) Wrap(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (tmw *TransactionMiddleware) Wrap(next web.HandlerFunc) web.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) any {
 		ctx := r.Context()
 
 		// Start a new transaction
 		tx, err := tmw.tm.BeginTx(ctx)
 		if err != nil {
 			http.Error(w, "Could not start transaction", http.StatusInternalServerError)
-			return
+			return err
 		}
 
 		// Set the transaction in the repository
@@ -41,12 +42,13 @@ func (tmw *TransactionMiddleware) Wrap(next http.Handler) http.Handler {
 				return
 			}
 		}()
-		next.ServeHTTP(w, r)
+		next(w, r)
 
 		// If no error, commit the transaction
 		if err := tmw.tm.CommitTx(tx); err != nil {
 			http.Error(w, "Could not commit transaction", http.StatusInternalServerError)
-			return
+			return err
 		}
-	})
+		return nil
+	}
 }
