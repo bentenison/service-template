@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bentenison/microservice/foundation/logger"
 	"github.com/jmoiron/sqlx"
 
 	_ "github.com/lib/pq"
@@ -120,4 +121,47 @@ func StatusCheck(ctx context.Context, db *sqlx.DB) error {
 	const q = `SELECT TRUE`
 	var tmp bool
 	return db.QueryRowContext(ctx, q).Scan(&tmp)
+}
+func NamedQuerySlice[T any](ctx context.Context, log *logger.CustomLogger, db *sqlx.DB, query string, data any, dest *[]T) error {
+	return namedQuerySlice(ctx, log, db, query, data, dest, false)
+}
+func namedQuerySlice[T any](ctx context.Context, log *logger.CustomLogger, db sqlx.ExtContext, query string, data any, dest *[]T, withIn bool) (err error) {
+	// q := queryString(query, data)
+
+	defer func() {
+		if err != nil {
+			log.Info("namedQuerySlice err:", map[string]interface{}{
+				"error": err,
+			})
+		}
+	}()
+
+	// ctx, span := otel.AddSpan(ctx, "business.sdk.sqldb.queryslice", attribute.String("query", q))
+	// defer span.End()
+
+	var rows *sqlx.Rows
+
+	rows, err = sqlx.NamedQueryContext(ctx, db, query, data)
+	// }
+
+	if err != nil {
+		// var pqerr *pgconn.PgError
+		// if errors.As(err, &pqerr) && pqerr.Code == undefinedTable {
+		// 	return ErrUndefinedTable
+		// }
+		return err
+	}
+	defer rows.Close()
+
+	var slice []T
+	for rows.Next() {
+		v := new(T)
+		if err := rows.StructScan(v); err != nil {
+			return err
+		}
+		slice = append(slice, *v)
+	}
+	*dest = slice
+
+	return nil
 }

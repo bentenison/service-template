@@ -1,14 +1,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/bentenison/microservice/api/cmd/service/book-api/build/all"
 	"github.com/bentenison/microservice/api/sdk/http/debug"
+	"github.com/bentenison/microservice/api/sdk/http/mux"
 	"github.com/bentenison/microservice/business/sdk/sqldb"
 	"github.com/bentenison/microservice/foundation/conf"
 	"github.com/bentenison/microservice/foundation/logger"
 )
+
+var apiType = "all"
 
 func main() {
 	//initialize the application logger
@@ -24,12 +33,12 @@ func main() {
 			"error": err.Error(),
 		})
 	}
+	log.Info("config", map[string]interface{}{"config": config})
 	if err := run(log, config); err != nil {
 		log.Error("error while running server", map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
-	log.Info("config", map[string]interface{}{"config": config})
 	// log.Error("error while loading conf", map[string]interface{}{
 	// 	"error": "error",
 	// })
@@ -49,67 +58,75 @@ func run(log *logger.CustomLogger, cfg *conf.Config) error {
 	}
 
 	defer db.Close()
-	// go func() {
-	log.Info("startup debug v1 server started", map[string]interface{}{
-		"port": cfg.DebugPort,
-	})
-
-	if err := http.ListenAndServe(cfg.DebugPort, debug.Mux()); err != nil {
-		log.Error("error occured while listning for traffic", map[string]interface{}{
-			"error": err.Error(),
+	go func() {
+		log.Info("startup debug v1 server started", map[string]interface{}{
+			"port": cfg.DebugPort,
 		})
+
+		if err := http.ListenAndServe(cfg.DebugPort, debug.Mux()); err != nil {
+			log.Error("error occured while listning for traffic", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+	}()
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+	cfgMux := mux.Config{
+		Build: "develop",
+		Log:   log,
+		DB:    db,
 	}
-	// }()
 
-	// shutdown := make(chan os.Signal, 1)
-	// signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+	api := http.Server{
+		Addr:    cfg.BookAPIPort,
+		Handler: mux.WebAPI(cfgMux, buildRoutes()),
+		// ReadTimeout:  cfg.Web.ReadTimeout,
+		// WriteTimeout: cfg.,
+		// IdleTimeout:  cfg.Web.IdleTimeout,
+		// ErrorLog: lo,
+	}
 
-	// cfgMux := mux.Config{
-	// 	Build:      build,
-	// 	Log:        log,
-	// 	AuthClient: authClient,
-	// 	DB:         db,
-	// 	Tracer:     tracer,
-	// }
-
-	// api := http.Server{
-	// 	Addr:         cfg.BookAPIPort,
-	// 	Handler:      mux.WebAPI(cfgMux, buildRoutes(), mux.WithCORS(cfg.Web.CORSAllowedOrigins)),
-	// 	ReadTimeout:  cfg.Web.ReadTimeout,
-	// 	WriteTimeout: cfg.,
-	// 	IdleTimeout:  cfg.Web.IdleTimeout,
-	// 	ErrorLog:     logger.NewStdLogger(log, logger.LevelError),
-	// }
-
-	// serverErrors := make(chan error, 1)
-
-	// go func() {
-	// 	log.Info("api router started", map[string]interface{}{
-	// 		"port": cfg.BookAPIPort,
-	// 	})
-
-	// 	serverErrors <- api.ListenAndServe()
-	// }()
+	serverErrors := make(chan error, 1)
+	ctx := context.Background()
+	go func() {
+		log.Info("api router started", map[string]interface{}{
+			"port": cfg.BookAPIPort,
+		})
+		serverErrors <- api.ListenAndServe()
+	}()
 
 	// // -------------------------------------------------------------------------
 	// // Shutdown
 
-	// select {
-	// case err := <-serverErrors:
-	// 	return fmt.Errorf("server error: %w", err)
+	select {
+	case err := <-serverErrors:
+		return fmt.Errorf("server error: %w", err)
 
-	// case sig := <-shutdown:
-	// 	log.Info("shutdown started")
-	// 	defer log.Info("shutdown completed")
+	case sig := <-shutdown:
+		log.Info("shutdown started", map[string]interface{}{
+			"signal": sig,
+		})
+		defer log.Info("shutdown completed")
 
-	// 	ctx, cancel := context.WithTimeout(ctx, cfg.ShutdownTimeout)
-	// 	defer cancel()
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(cfg.ShutdownTimeout))
+		defer cancel()
 
-	// 	if err := api.Shutdown(ctx); err != nil {
-	// 		api.Close()
-	// 		return fmt.Errorf("could not stop server gracefully: %w", err)
-	// 	}
-	// }
+		if err := api.Shutdown(ctx); err != nil {
+			api.Close()
+			return fmt.Errorf("could not stop server gracefully: %w", err)
+		}
+	}
 
 	return nil
+}
+
+func buildRoutes() mux.RouteAdder {
+	switch apiType {
+	case "all":
+		return all.Routes()
+
+	}
+	return all.Routes()
 }

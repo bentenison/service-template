@@ -1,0 +1,5 @@
+package bookdb
+
+func appluFilter() {
+
+}

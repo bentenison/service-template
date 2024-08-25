@@ -1,73 +1,80 @@
--- Create the Authors table (optional)
+
+-- Create the Authors table
 CREATE TABLE Authors (
-    AuthorID SERIAL PRIMARY KEY,
-    Name VARCHAR(100) NOT NULL
+    author_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
 );
 
--- Create the Categories table (optional)
+-- Create the Categories table
 CREATE TABLE Categories (
-    CategoryID SERIAL PRIMARY KEY,
-    Name VARCHAR(50) NOT NULL
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
 );
+
 
 -- Create the Users table
 CREATE TABLE Users (
-    UserID SERIAL PRIMARY KEY,
-    FirstName VARCHAR(50) NOT NULL,
-    LastName VARCHAR(50) NOT NULL,
-    Email VARCHAR(100) UNIQUE NOT NULL,
-    PhoneNumber VARCHAR(15),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone_number VARCHAR(15),
+    password VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- Create the Books table with Tags as an array
 CREATE TABLE Books (
-    BookID SERIAL PRIMARY KEY,
-    Title VARCHAR(100) NOT NULL,
-    AuthorID INT,
-    CategoryID INT,
-    ISBN VARCHAR(20) UNIQUE NOT NULL,
-    PublishedDate DATE,
-    AvailableCopies INT DEFAULT 0,
-    Tags TEXT[] DEFAULT '{}', -- Store tags as an array of text
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (AuthorID) REFERENCES Authors(AuthorID),
-    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
+    book_id SERIAL PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+    author_id INT,
+    category_id INT,
+    isbn VARCHAR(20) UNIQUE NOT NULL,
+    published_date DATE,
+    available_copies INT DEFAULT 0,
+    tags TEXT[] DEFAULT '{}', -- Store tags as an array of text
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    image_url TEXT, -- Stores the image URL
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES Authors(author_id),
+    FOREIGN KEY (category_id) REFERENCES Categories(category_id)
 );
+
 
 -- Create the Leases table
 CREATE TABLE Leases (
-    LeaseID SERIAL PRIMARY KEY,
-    UserID INT,
-    BookID INT,
-    LeaseDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ReturnDate TIMESTAMP,
-    IsReturned BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (UserID) REFERENCES Users(UserID),
-    FOREIGN KEY (BookID) REFERENCES Books(BookID)
+    lease_id SERIAL PRIMARY KEY,
+    user_id INT,
+    book_id INT,
+    lease_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    return_date TIMESTAMP,
+    is_returned BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (book_id) REFERENCES Books(book_id)
 );
 
+
 -- Optional: Trigger function to update UpdatedAt column
-CREATE OR REPLACE FUNCTION update_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.UpdatedAt = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- CREATE OR REPLACE FUNCTION update_timestamp()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     NEW.UpdatedAt = CURRENT_TIMESTAMP;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
 -- Optional: Create triggers for Users and Books tables
-CREATE TRIGGER update_users_timestamp
-BEFORE UPDATE ON Users
-FOR EACH ROW
-EXECUTE FUNCTION update_timestamp();
+-- CREATE TRIGGER update_users_timestamp
+-- BEFORE UPDATE ON Users
+-- FOR EACH ROW
+-- EXECUTE FUNCTION update_timestamp();
 
-CREATE TRIGGER update_books_timestamp
-BEFORE UPDATE ON Books
-FOR EACH ROW
-EXECUTE FUNCTION update_timestamp();
+-- CREATE TRIGGER update_books_timestamp
+-- BEFORE UPDATE ON Books
+-- FOR EACH ROW
+-- EXECUTE FUNCTION update_timestamp();
 
 -- Sample Inserts into the Authors table (optional)
 INSERT INTO Authors (Name) VALUES
