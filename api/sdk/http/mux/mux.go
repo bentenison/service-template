@@ -6,6 +6,7 @@ import (
 	"github.com/bentenison/microservice/foundation/logger"
 	"github.com/bentenison/microservice/foundation/web"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 type RouteAdder interface {
@@ -16,8 +17,8 @@ type Config struct {
 	Log   *logger.CustomLogger
 	// Auth       *auth.Auth
 	// AuthClient *authclient.Client
-	DB *sqlx.DB
-	// Tracer     trace.Tracer
+	DB     *sqlx.DB
+	Tracer *trace.TracerProvider
 }
 
 func WebAPI(cfg Config, routeAdder RouteAdder) http.Handler {

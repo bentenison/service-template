@@ -15,6 +15,8 @@ import (
 	"github.com/bentenison/microservice/business/sdk/sqldb"
 	"github.com/bentenison/microservice/foundation/conf"
 	"github.com/bentenison/microservice/foundation/logger"
+	"github.com/bentenison/microservice/foundation/otel"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 var apiType = "all"
@@ -33,8 +35,19 @@ func main() {
 			"error": err.Error(),
 		})
 	}
+	// // -------------------------------------------------------------------------
+	// // INITIALIZE TRACER OTEL
+	trace, err := otel.NewTracer()
+	if err != nil {
+		log.Error("error while initializing tracer", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+	defer func() {
+		otel.ShutDownTracer(trace)
+	}()
 	log.Info("config", map[string]interface{}{"config": config})
-	if err := run(log, config); err != nil {
+	if err := run(log, trace, config); err != nil {
 		log.Error("error while running server", map[string]interface{}{
 			"error": err.Error(),
 		})
@@ -43,7 +56,7 @@ func main() {
 	// 	"error": "error",
 	// })
 }
-func run(log *logger.CustomLogger, cfg *conf.Config) error {
+func run(log *logger.CustomLogger, tracer *trace.TracerProvider, cfg *conf.Config) error {
 	//starting database connection
 	db, err := sqldb.Open(sqldb.Config{
 		User:         cfg.User,
@@ -74,9 +87,10 @@ func run(log *logger.CustomLogger, cfg *conf.Config) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build: "develop",
-		Log:   log,
-		DB:    db,
+		Build:  "develop",
+		Log:    log,
+		DB:     db,
+		Tracer: tracer,
 	}
 
 	api := http.Server{

@@ -26,6 +26,7 @@ func (add) Add(app *web.App, cfg mux.Config) {
 	bookapi.Routes(app, bookapi.Config{
 		Log:     cfg.Log,
 		BookBus: bookbus,
+		Tracer:  cfg.Tracer,
 	})
 
 }
