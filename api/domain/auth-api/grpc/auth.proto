@@ -1,0 +1,37 @@
+syntax = "proto3";
+option go_package = "./proto";
+package auth;
+
+service AuthService {
+    rpc Authenticate(LoginRequest) returns (LoginResponse);
+    rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+    rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+}
+message CreateAccountRequest {
+    string username = 1;
+    string email = 2;
+    string password = 3;
+    string role = 4;
+}
+
+message CreateAccountResponse {
+    string id = 1;
+    string message = 2;
+}
+message LoginRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+    string token = 1;
+}
+
+message AuthorizeRequest {
+    string token = 1;
+    string requiredRole = 2;
+}
+
+message AuthorizeResponse {
+    string message = 1;
+}

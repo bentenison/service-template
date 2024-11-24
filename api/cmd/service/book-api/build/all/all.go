@@ -20,13 +20,13 @@ type add struct{}
 // Add implements the RouterAdder interface.
 func (add) Add(app *web.App, cfg mux.Config) {
 	delegate := delegate.New(cfg.Log)
-	bookbus := bookbus.NewBusiness(cfg.Log, cfg.DB, delegate, bookdb.NewStore(cfg.Log, cfg.DB))
+	bookbus := bookbus.NewBusiness(cfg.Log, cfg.DB.SQL, delegate, bookdb.NewStore(cfg.Log, cfg.DB.SQL))
 	// Construct the business domain packages we need here so we are using the
 	// sames instances for the different set of domain apis.
 	bookapi.Routes(app, bookapi.Config{
 		Log:     cfg.Log,
 		BookBus: bookbus,
-		Tracer:  cfg.Tracer,
+		// Tracer:  cfg.Tracer,
 	})
 
 }

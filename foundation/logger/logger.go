@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"os"
 
 	"go.uber.org/zap"
@@ -68,23 +69,27 @@ func (l *CustomLogger) addFields(extraFields ...map[string]interface{}) []zap.Fi
 }
 
 // Debug logs a message at the Debug level with optional extra fields.
-func (l *CustomLogger) Debug(msg string, extraFields ...map[string]interface{}) {
-	l.zapLogger.Debug(msg, l.addFields(extraFields...)...)
+func (l *CustomLogger) Debugc(ctx context.Context, msg string, extraFields map[string]interface{}) {
+	extraFields["traceID"] = ctx.Value("tracectx")
+	l.zapLogger.Debug(msg, l.addFields(extraFields)...)
 }
 
 // Info logs a message at the Info level with optional extra fields.
-func (l *CustomLogger) Info(msg string, extraFields ...map[string]interface{}) {
-	l.zapLogger.Info(msg, l.addFields(extraFields...)...)
+func (l *CustomLogger) Infoc(ctx context.Context, msg string, extraFields map[string]interface{}) {
+	extraFields["traceID"] = ctx.Value("tracectx")
+	l.zapLogger.Info(msg, l.addFields(extraFields)...)
 }
 
 // Warn logs a message at the Warn level with optional extra fields.
-func (l *CustomLogger) Warn(msg string, extraFields ...map[string]interface{}) {
-	l.zapLogger.Warn(msg, l.addFields(extraFields...)...)
+func (l *CustomLogger) Warnc(ctx context.Context, msg string, extraFields map[string]interface{}) {
+	extraFields["traceID"] = ctx.Value("tracectx")
+	l.zapLogger.Warn(msg, l.addFields(extraFields)...)
 }
 
-// Error logs a message at the Error level with optional extra fields.
-func (l *CustomLogger) Error(msg string, extraFields ...map[string]interface{}) {
-	l.zapLogger.Error(msg, l.addFields(extraFields...)...)
+// Errorc logs a message at the Errorc level with optional extra fields.
+func (l *CustomLogger) Errorc(ctx context.Context, msg string, extraFields map[string]interface{}) {
+	extraFields["traceID"] = ctx.Value("tracectx")
+	l.zapLogger.Error(msg, l.addFields(extraFields)...)
 }
 
 // Sync flushes any buffered log entries.

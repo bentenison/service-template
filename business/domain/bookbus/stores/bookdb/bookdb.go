@@ -35,7 +35,7 @@ func (s *Store) Create(ctx context.Context, bks bookbus.Book) error {
           VALUES (:title, :author_id, :category_id, :isbn, :published_date, :available_copies, :tags, :image_url,:created_at,:updated_at)`
 	_, err := s.db.NamedExec(query, &bks)
 	if err != nil {
-		s.log.Error("error while creating book", map[string]interface{}{
+		s.log.Errorc(ctx, "error while creating book", map[string]interface{}{
 			"error": err,
 		})
 		return err
@@ -46,7 +46,7 @@ func (s *Store) Update(ctx context.Context, bks bookbus.UpdateBook) error {
 	query := `UPDATE books SET available_copies = :available_copies, tags = :tags WHERE book_id = :book_id`
 	_, err := s.db.NamedExec(query, &bks)
 	if err != nil {
-		s.log.Error("error while creating book", map[string]interface{}{
+		s.log.Errorc(ctx, "error while creating book", map[string]interface{}{
 			"error": err,
 		})
 		return err
@@ -57,7 +57,7 @@ func (s *Store) Delete(ctx context.Context, bks bookbus.Book) error {
 	query := `DELETE FROM books WHERE book_id = :book_id`
 	_, err := s.db.NamedExec(query, &bks)
 	if err != nil {
-		s.log.Error("error while creating book", map[string]interface{}{
+		s.log.Errorc(ctx, "error while creating book", map[string]interface{}{
 			"error": err,
 		})
 		return err
@@ -70,7 +70,7 @@ func (s *Store) Query(ctx context.Context) ([]bookbus.Book, error) {
 	var books []bookbus.Book
 	err := sqldb.NamedQuerySlice(ctx, s.log, s.db, query, nil, &books)
 	if err != nil {
-		s.log.Error("error while querying all books", map[string]interface{}{
+		s.log.Errorc(ctx, "error while querying all books", map[string]interface{}{
 			"error": err,
 		})
 		return books, err

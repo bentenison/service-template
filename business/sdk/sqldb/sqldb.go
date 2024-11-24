@@ -130,7 +130,7 @@ func namedQuerySlice[T any](ctx context.Context, log *logger.CustomLogger, db sq
 
 	defer func() {
 		if err != nil {
-			log.Info("namedQuerySlice err:", map[string]interface{}{
+			log.Infoc(ctx, "namedQuerySlice err:", map[string]interface{}{
 				"error": err,
 			})
 		}

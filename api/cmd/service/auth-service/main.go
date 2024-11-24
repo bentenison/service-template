@@ -9,10 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bentenison/microservice/api/cmd/service/book-api/build/all"
+	"github.com/bentenison/microservice/api/cmd/service/auth-service/build/all"
 	"github.com/bentenison/microservice/api/sdk/http/debug"
 	"github.com/bentenison/microservice/api/sdk/http/mux"
 	"github.com/bentenison/microservice/business/sdk/mongodb"
+	"github.com/bentenison/microservice/business/sdk/redisdb"
 	"github.com/bentenison/microservice/business/sdk/sqldb"
 	"github.com/bentenison/microservice/foundation/conf"
 	"github.com/bentenison/microservice/foundation/logger"
@@ -20,12 +21,11 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-var apiType = "all"
+const apiType = "all"
 
 func main() {
-	//initialize the application logger
 	log := logger.NewCustomLogger(map[string]interface{}{
-		"service": "example-service",
+		"service": "auth-service",
 		"env":     "production",
 		"build":   "1.0.0",
 	})
@@ -53,12 +53,9 @@ func main() {
 			"error": err.Error(),
 		})
 	}
-	// log.Errorc("error while loading conf", map[string]interface{}{
-	// 	"error": "error",
-	// })
 }
 func run(log *logger.CustomLogger, tracer *trace.TracerProvider, cfg *conf.Config) error {
-	//starting database connection
+	//starting sql database connection
 	db, err := sqldb.Open(sqldb.Config{
 		User:         cfg.User,
 		Password:     cfg.Password,
@@ -68,23 +65,32 @@ func run(log *logger.CustomLogger, tracer *trace.TracerProvider, cfg *conf.Confi
 		MaxOpenConns: cfg.MaxOpenConns,
 	})
 	if err != nil {
-		// log.Errorc("error connecting to DB")
-		return err
+		return fmt.Errorf("connecting to db: %w", err)
 	}
 
 	defer db.Close()
+	// starting mongio db connection
 
 	mongo, err := mongodb.InitializeMongo(mongodb.Config{
-		Host:     cfg.MongoHost,
-		Port:     cfg.MongoPort,
-		Username: cfg.MongoUser,
+		Username:    cfg.MongoUser,
+		Password:    cfg.MongoPassword,
+		AuthDB:      cfg.MongoAuth,
+		Host:        cfg.MongoHost,
+		Port:        cfg.MongoPort,
+		DBName:      cfg.MongoDbName,
+		AllowDirect: cfg.AllowDirect,
 	})
 	if err != nil {
-		return fmt.Errorf("connecting to db: %w", err)
+		return err
+	}
+	rdb, err := redisdb.OpenRDB(redisdb.Config{})
+	if err != nil {
+		return err
 	}
 	ds := mux.DataSource{
 		MGO: mongo,
 		SQL: db,
+		RDB: rdb,
 	}
 	go func() {
 		log.Infoc(context.TODO(), "startup debug v1 server started", map[string]interface{}{
@@ -102,14 +108,15 @@ func run(log *logger.CustomLogger, tracer *trace.TracerProvider, cfg *conf.Confi
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	cfgMux := mux.Config{
-		Build:  "develop",
-		Log:    log,
-		DB:     ds,
-		Tracer: tracer,
+		Build:     "develop",
+		Log:       log,
+		DB:        ds,
+		Tracer:    tracer,
+		AppConfig: cfg,
 	}
 	app := mux.WebAPI(cfgMux, buildRoutes())
 	api := http.Server{
-		Addr:    cfg.BookAPIPort,
+		Addr:    cfg.AuthAPIPort,
 		Handler: app,
 		// ReadTimeout:  cfg.Web.ReadTimeout,
 		// WriteTimeout: cfg.,
@@ -120,8 +127,8 @@ func run(log *logger.CustomLogger, tracer *trace.TracerProvider, cfg *conf.Confi
 	serverErrors := make(chan error, 1)
 	ctx := context.Background()
 	go func() {
-		log.Infoc(context.TODO(), "api router started", map[string]interface{}{
-			"port": cfg.BookAPIPort,
+		log.Infoc(context.TODO(), "auth-api router started", map[string]interface{}{
+			"port": cfg.AuthAPIPort,
 		})
 		serverErrors <- api.ListenAndServe()
 	}()
@@ -150,7 +157,6 @@ func run(log *logger.CustomLogger, tracer *trace.TracerProvider, cfg *conf.Confi
 
 	return nil
 }
-
 func buildRoutes() mux.RouteAdder {
 	switch apiType {
 	case "all":

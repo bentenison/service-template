@@ -1,11 +1,10 @@
 package mid
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/bentenison/microservice/business/sdk/sqldb"
-	"github.com/bentenison/microservice/foundation/web"
+	"github.com/gin-gonic/gin"
 )
 
 type TransactionMiddleware struct {
@@ -16,39 +15,39 @@ func NewTransactionMiddleware(tm sqldb.TransactionManager) *TransactionMiddlewar
 	return &TransactionMiddleware{tm: tm}
 }
 
-func (tmw *TransactionMiddleware) Wrap(next web.HandlerFunc) web.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) any {
-		ctx := r.Context()
+func (tmw *TransactionMiddleware) TransactionManager() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// ctx := r.Context()
 
 		// Start a new transaction
-		tx, err := tmw.tm.BeginTx(ctx)
+		tx, err := tmw.tm.BeginTx(c)
 		if err != nil {
-			http.Error(w, "Could not start transaction", http.StatusInternalServerError)
-			return err
+			c.JSON(http.StatusInternalServerError, "Could not start transaction")
+			return
 		}
 
 		// Set the transaction in the repository
 		// tmw.repo.SetTx(tx)
 
 		// Create a new context with the transaction and pass it to the handler
-		ctx = context.WithValue(ctx, "tx", tx)
-		r = r.WithContext(ctx)
+		c.Set(trKey, tx)
+		// r = r.WithContext(ctx)
 
 		// Call the next handler in the chain
 		defer func() {
 			if err := recover(); err != nil {
 				_ = tmw.tm.RollbackTx(tx) // Rollback on panic
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				c.JSON(http.StatusInternalServerError, "Internal server error")
 				return
 			}
 		}()
-		next(w, r)
+		c.Next()
 
 		// If no error, commit the transaction
 		if err := tmw.tm.CommitTx(tx); err != nil {
-			http.Error(w, "Could not commit transaction", http.StatusInternalServerError)
-			return err
+			c.JSON(http.StatusInternalServerError, "Could not commit transaction")
+			// http.Errorc(w,  http.StatusInternalServerError)
+			return
 		}
-		return nil
 	}
 }

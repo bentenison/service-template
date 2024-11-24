@@ -6,6 +6,7 @@ import (
 
 	"github.com/bentenison/microservice/app/domain/bookapp"
 	"github.com/bentenison/microservice/app/sdk/mid"
+	"github.com/gin-gonic/gin"
 )
 
 type api struct {
@@ -18,20 +19,17 @@ func newAPI(bookApp *bookapp.App) *api {
 	}
 }
 
-func (a *api) query(w http.ResponseWriter, r *http.Request) any {
+func (a *api) query(c *gin.Context) {
 	// qp, err := parseQueryParams(r)
 	// if err != nil {
 	// 	apperrors.NewError(err
 	// }
-	id := mid.GetTraceId(r.Context())
+	id := mid.GetTraceId(c.Request.Context())
 	log.Println("TraceID is ", id)
 	log.Println("query params:", "Hello World!!")
 	// web.Respond(200, r, w, map[string]interface{}{
 	// 	"Hello": "I am running",
 	// })
-	a.bookApp.Query(r.Context())
-	return map[string]interface{}{
-		"Hello":   "I am running",
-		"traceId": id,
-	}
+	a.bookApp.Query(c)
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }

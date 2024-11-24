@@ -1,18 +1,18 @@
 package mid
 
-import "context"
-
-type ctxKey int
-
-const (
-	claimKey ctxKey = iota + 1
-	userIDKey
-	userKey
-	bookKey
-	trKey
-	traceKey
+import (
+	"context"
 )
 
-func GetTraceId(ctx context.Context) string {
-	return ctx.Value(traceKey).(string)
+const (
+	claimKey  = "claimctx"
+	userIDKey = "userIdctx"
+	userKey   = "userctx"
+	bookKey   = "bookctx"
+	trKey     = "trsnctx"
+	traceKey  = "tracectx"
+)
+
+func GetTraceId(ctx context.Context) any {
+	return ctx.Value(traceKey)
 }

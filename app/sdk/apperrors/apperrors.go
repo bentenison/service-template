@@ -9,7 +9,7 @@ import (
 type ErrCode struct {
 	value int
 }
-type Error struct {
+type Errorc struct {
 	Code     ErrCode `json:"code"`
 	Message  string  `json:"message"`
 	FuncName string  `json:"-"`
@@ -26,9 +26,9 @@ func (ec ErrCode) String() string {
 	return codeNames[ec]
 }
 
-func New(code ErrCode, err error) *Error {
+func New(code ErrCode, err error) *Errorc {
 	pc, file, line, _ := runtime.Caller(1)
-	return &Error{
+	return &Errorc{
 		Code:     code,
 		Message:  err.Error(),
 		FuncName: runtime.FuncForPC(pc).Name(),
@@ -36,14 +36,14 @@ func New(code ErrCode, err error) *Error {
 	}
 }
 
-func (e *Error) Error() string {
+func (e *Errorc) Errorc() string {
 	return e.Message
 }
 
-// NewError checks for an Error in the error interface value. If it doesn't
+// NewError checks for an Errorc in the error interface value. If it doesn't
 // exist, will create one from the error.
-func NewError(err error) *Error {
-	var errsErr *Error
+func NewError(err error) *Errorc {
+	var errsErr *Errorc
 	if errors.As(err, &errsErr) {
 		return errsErr
 	}

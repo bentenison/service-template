@@ -17,5 +17,6 @@ type Config struct {
 
 func Routes(app *web.App, cfg Config) {
 	api := newAPI(bookapp.NewApp(cfg.BookBus, cfg.Tracer))
-	app.HandleFunc("/test", api.query, mid.TraceTdMiddleware).Methods("GET")
+	app.Use(mid.TraceIdMiddleware())
+	app.Handle("GET", "/test", api.query)
 }
